@@ -25,7 +25,7 @@ jobs:
         run: |
           mkdir -p dist
           cp -r tracker.html dist/tracker.html
-          cp -r assets/* dist/assets/*
+          cp -r assets dist/
           rm -rf dist/.git dist/.github
 
       - name: Inject Firebase API key
