@@ -24,7 +24,8 @@ jobs:
       - name: Prepare build output
         run: |
           mkdir -p dist
-          cp -r . dist/
+          cp -r tracker.html dist/tracker.html
+          cp -r assets/* dist/assets/*
           rm -rf dist/.git dist/.github
 
       - name: Inject Firebase API key
