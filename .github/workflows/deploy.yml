@@ -24,7 +24,7 @@ jobs:
       - name: Prepare build output
         run: |
           mkdir -p dist
-          cp -r tracker.html dist/tracker.html
+          cp -r index.html dist/index.html
           cp -r assets dist/
           rm -rf dist/.git dist/.github
 
