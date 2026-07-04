@@ -1,0 +1,1432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="mobile-web-app-capable" content="yes">
+<title>Ledger</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #0B0C10;
+    --panel: #15171D;
+    --panel-raised: #1B1E25;
+    --border: #262933;
+    --text: #EDEEF0;
+    --text-dim: #8A8F98;
+    --text-faint: #565A64;
+    --accent: #6C5CE7;
+    --accent-dim: #6C5CE733;
+    --danger: #FB7185;
+
+    --font-display: 'Space Grotesk', sans-serif;
+    --font-body: 'Inter', sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+  }
+
+  *{ box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent; }
+  html,body{ height:100%; }
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:var(--font-body);
+    overscroll-behavior:none;
+    -webkit-font-smoothing:antialiased;
+  }
+  #app{
+    max-width:480px;
+    margin:0 auto;
+    height:100vh;
+    height:100dvh;
+    display:flex;
+    flex-direction:column;
+    position:relative;
+  }
+
+  /* ---------- Header ---------- */
+  .topbar{
+    padding:calc(env(safe-area-inset-top) + 18px) 20px 0;
+    flex-shrink:0;
+  }
+  .topbar .greeting{
+    font-family:var(--font-mono);
+    font-size:12px;
+    color:var(--text-faint);
+    letter-spacing:0.06em;
+    text-transform:uppercase;
+    margin-bottom:2px;
+  }
+  .topbar .name{
+    font-family:var(--font-display);
+    font-size:26px;
+    font-weight:700;
+    letter-spacing:-0.01em;
+  }
+
+  /* ---------- Week strip ---------- */
+  .strip-header{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:calc(env(safe-area-inset-top) + 18px) 20px 14px;
+  }
+  .strip-nav-btn{
+    width:34px; height:34px;
+    border-radius:10px;
+    background:var(--panel);
+    border:1px solid var(--border);
+    color:var(--text-dim);
+    font-size:17px;
+    display:flex; align-items:center; justify-content:center;
+    flex-shrink:0;
+  }
+  .strip-nav-btn:active{ transform:scale(0.9); }
+  .strip-label-btn{
+    display:flex; align-items:center; gap:8px;
+    background:none; border:none;
+    font-family:var(--font-display);
+    font-size:19px; font-weight:700;
+    color:var(--text);
+  }
+  .strip-label-btn svg{ width:18px; height:18px; stroke:var(--text-faint); }
+  .week-strip{
+    display:flex;
+    gap:8px;
+    padding:0 20px 20px;
+    overflow-x:auto;
+  }
+  .week-day{
+    flex:1;
+    min-width:40px;
+    display:flex; flex-direction:column; align-items:center; gap:6px;
+    padding:10px 4px;
+    border-radius:14px;
+    cursor:pointer;
+  }
+  .week-day .wd-label{
+    font-family:var(--font-mono);
+    font-size:11px;
+    color:var(--text-faint);
+  }
+  .week-day .wd-num{
+    font-family:var(--font-display);
+    font-size:20px;
+    font-weight:700;
+    color:var(--text);
+  }
+  .week-day.selected{ background:#34D399; }
+  .week-day.selected .wd-label, .week-day.selected .wd-num{ color:#08130E; }
+
+  /* ---------- Daily score card ---------- */
+  .score-card{
+    margin:16px 20px 18px;
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:18px;
+    padding:16px 18px;
+    display:flex;
+    align-items:center;
+    gap:16px;
+  }
+  .score-ring-wrap{ position:relative; width:58px; height:58px; flex-shrink:0; }
+  .score-ring-wrap svg{ width:58px; height:58px; transform:rotate(-90deg); }
+  .score-ring-bg{ fill:none; stroke:var(--panel-raised); stroke-width:6; }
+  .score-ring-fill{ fill:none; stroke:var(--accent); stroke-width:6; stroke-linecap:round; transition:stroke-dasharray 0.4s cubic-bezier(.16,1,.3,1); }
+  .score-ring-pct{
+    position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    font-family:var(--font-mono); font-size:12px; font-weight:600; color:var(--text);
+  }
+  .score-mid{ flex:1; min-width:0; }
+  .score-title{ font-family:var(--font-display); font-size:16px; font-weight:700; }
+  .score-sub{ font-family:var(--font-mono); font-size:11px; color:var(--text-faint); margin-top:3px; letter-spacing:0.02em; }
+  .score-frac{
+    font-family:var(--font-mono);
+    font-size:22px;
+    font-weight:600;
+    color:var(--text);
+    flex-shrink:0;
+    text-align:right;
+  }
+  .score-frac span{ font-size:13px; color:var(--text-faint); }
+
+  /* ---------- Screens ---------- */
+  .screen{
+    flex:1;
+    overflow-y:auto;
+    display:none;
+    padding-bottom:100px;
+    -webkit-overflow-scrolling:touch;
+  }
+  .screen.active{ display:block; }
+
+  /* ---------- Month/Year pill (Today screen) ---------- */
+  .date-pill{
+    margin:0 20px 18px;
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:16px;
+    padding:13px 16px;
+    display:flex;
+    align-items:center;
+    gap:12px;
+    cursor:pointer;
+    transition:transform 0.12s ease;
+  }
+  .date-pill:active{ transform:scale(0.98); }
+  .date-pill-icon{
+    width:36px; height:36px;
+    border-radius:10px;
+    background:var(--accent-dim);
+    display:flex; align-items:center; justify-content:center;
+    flex-shrink:0;
+  }
+  .date-pill-icon svg{ width:18px; height:18px; stroke:var(--accent); }
+  .date-pill-text{ flex:1; }
+  .date-pill-label{
+    font-family:var(--font-mono);
+    font-size:10px;
+    text-transform:uppercase;
+    letter-spacing:0.06em;
+    color:var(--text-faint);
+  }
+  .date-pill-value{
+    font-family:var(--font-display);
+    font-size:16px;
+    font-weight:600;
+    margin-top:1px;
+  }
+  .date-pill-chevron{ color:var(--text-faint); font-size:18px; }
+
+  /* ---------- Habit list ---------- */
+  .section-label{
+    font-family:var(--font-mono);
+    font-size:11px;
+    letter-spacing:0.08em;
+    text-transform:uppercase;
+    color:var(--text-faint);
+    padding:0 20px;
+    margin-bottom:10px;
+  }
+  .list{ padding:0 20px; display:flex; flex-direction:column; gap:8px; }
+
+  .habit-card{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:14px;
+    padding:12px 10px 12px 12px;
+  }
+  .check-circle{
+    width:28px; height:28px;
+    border-radius:9px;
+    border:2px solid var(--border);
+    flex-shrink:0;
+    display:flex; align-items:center; justify-content:center;
+    transition:transform 0.15s cubic-bezier(.34,1.56,.64,1), background 0.15s ease, border-color 0.15s ease;
+  }
+  .check-circle:active{ transform:scale(0.85); }
+  .check-circle svg{ width:14px; height:14px; opacity:0; transform:scale(0.5); transition:opacity 0.15s ease, transform 0.15s cubic-bezier(.34,1.56,.64,1); }
+  .check-circle.checked svg{ opacity:1; transform:scale(1); }
+  .habit-name{
+    font-size:15px;
+    font-weight:500;
+    flex:1;
+    transition:color 0.15s ease;
+  }
+  .habit-name.done{
+    color:var(--text-faint);
+    text-decoration:line-through;
+    text-decoration-thickness:1.5px;
+  }
+  .habit-time{
+    font-family:var(--font-mono);
+    font-size:11px;
+    color:var(--text-faint);
+    flex-shrink:0;
+  }
+  .dots-btn{
+    background:none; border:none; color:var(--text-faint);
+    font-size:18px; padding:4px 6px; flex-shrink:0; line-height:1;
+    letter-spacing:1px;
+  }
+  .trash-btn{
+    background:none; border:none; color:var(--text-faint);
+    flex-shrink:0; padding:4px;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .trash-btn svg{ width:19px; height:19px; }
+  .trash-btn:active{ transform:scale(0.9); }
+  .habit-card-body{ display:flex; flex-direction:column; flex:1; min-width:0; gap:1px; cursor:pointer; }
+
+  .empty-state{
+    padding:40px 20px;
+    text-align:center;
+    color:var(--text-faint);
+    font-size:14px;
+    line-height:1.6;
+  }
+
+  /* ---------- FAB ---------- */
+  .fab{
+    position:absolute;
+    right:20px;
+    bottom:calc(90px + env(safe-area-inset-bottom));
+    width:54px; height:54px;
+    border-radius:50%;
+    background:var(--accent);
+    color:#fff;
+    border:none;
+    font-size:26px;
+    display:flex; align-items:center; justify-content:center;
+    box-shadow:0 8px 24px -6px #6C5CE788;
+    z-index:20;
+    transition:transform 0.12s ease;
+  }
+  .fab:active{ transform:scale(0.9); }
+
+  /* ---------- Progress screen ---------- */
+  .habit-progress-card{
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:16px;
+    padding:14px 16px;
+    margin:0 20px 12px;
+    cursor:pointer;
+    transition:transform 0.12s ease;
+  }
+  .habit-progress-card:active{ transform:scale(0.985); }
+  .hp-head{
+    display:flex; align-items:center; gap:10px; margin-bottom:11px;
+  }
+  .hp-head .habit-name{ font-family:var(--font-display); font-weight:600; flex:initial; }
+  .hp-streak{
+    margin-left:auto;
+    font-family:var(--font-mono);
+    font-size:12px;
+    color:var(--text-dim);
+  }
+  .hp-grid{
+    display:flex;
+    gap:6px;
+  }
+  .box{
+    width:22px; height:22px;
+    border-radius:6px;
+    background:var(--panel-raised);
+    border:1px solid var(--border);
+    transition:background 0.2s ease, border-color 0.2s ease;
+  }
+  .box.filled{ border-color:transparent; }
+
+  /* Detail (monthly view) */
+  .detail-header{
+    display:flex; align-items:center; gap:12px;
+    padding:14px 20px 10px;
+  }
+  .back-btn{
+    width:34px; height:34px;
+    border-radius:10px;
+    background:var(--panel);
+    border:1px solid var(--border);
+    color:var(--text);
+    font-size:18px;
+    display:flex; align-items:center; justify-content:center;
+    flex-shrink:0;
+  }
+  .detail-title{
+    font-family:var(--font-display);
+    font-size:19px;
+    font-weight:700;
+    display:flex;
+    align-items:center;
+    gap:9px;
+  }
+  .stat-row{
+    display:flex; gap:10px;
+    padding:6px 20px 18px;
+  }
+  .stat-box{
+    flex:1;
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:12px;
+    padding:12px;
+  }
+  .stat-num{
+    font-family:var(--font-mono);
+    font-size:20px;
+    font-weight:600;
+  }
+  .stat-cap{
+    font-size:10px;
+    color:var(--text-faint);
+    text-transform:uppercase;
+    letter-spacing:0.05em;
+    margin-top:2px;
+  }
+  .month-nav{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:0 20px 14px;
+  }
+  .month-nav-btn{
+    width:32px; height:32px;
+    border-radius:9px;
+    background:var(--panel);
+    border:1px solid var(--border);
+    color:var(--text-dim);
+    font-size:16px;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .month-nav-btn:active{ transform:scale(0.9); }
+  .month-nav-label{
+    font-family:var(--font-display);
+    font-size:15px;
+    font-weight:600;
+  }
+  .month-grid-wrap{ padding:0 20px 30px; }
+  .dow-row{
+    display:grid;
+    grid-template-columns:repeat(7, 1fr);
+    gap:6px;
+    margin-bottom:8px;
+  }
+  .dow-cell{
+    text-align:center;
+    font-family:var(--font-mono);
+    font-size:10px;
+    color:var(--text-faint);
+    letter-spacing:0.03em;
+  }
+  .month-grid{
+    display:grid;
+    grid-template-columns:repeat(7, 1fr);
+    gap:6px;
+  }
+  .day-box{
+    aspect-ratio:1;
+    border-radius:8px;
+    background:var(--panel-raised);
+    border:1px solid var(--border);
+    display:flex; align-items:center; justify-content:center;
+    font-family:var(--font-mono);
+    font-size:10px;
+    color:var(--text-faint);
+    transition:background 0.2s ease, border-color 0.2s ease;
+  }
+  .day-box.filled{ border-color:transparent; color:rgba(0,0,0,0.55); font-weight:600; }
+  .day-box.empty{ background:transparent; border:none; }
+  .day-box.today-mark{ border-color:var(--accent); border-width:1.5px; }
+  .day-box.future{ opacity:0.3; }
+
+  /* ---------- Reminders screen ---------- */
+  .reminder-card{
+    display:flex; align-items:center; gap:12px;
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:14px;
+    padding:12px 10px 12px 12px;
+  }
+  .reminder-tag-check{
+    width:26px; height:26px;
+    border-radius:50%;
+    border:2px solid var(--border);
+    flex-shrink:0;
+    display:flex; align-items:center; justify-content:center;
+    transition:transform 0.15s cubic-bezier(.34,1.56,.64,1);
+  }
+  .reminder-tag-check:active{ transform:scale(0.85); }
+  .reminder-tag-check svg{ width:14px; height:14px; opacity:0; transform:scale(0.5); transition:opacity 0.15s ease, transform 0.15s cubic-bezier(.34,1.56,.64,1); }
+  .reminder-tag-check.checked svg{ opacity:1; transform:scale(1); }
+  .reminder-body{ flex:1; min-width:0; }
+  .reminder-text{ font-size:15px; font-weight:500; }
+  .reminder-text.done{ color:var(--text-faint); text-decoration:line-through; text-decoration-thickness:1.5px; }
+  .reminder-meta{
+    font-family:var(--font-mono);
+    font-size:11px;
+    color:var(--text-faint);
+    margin-top:2px;
+  }
+  .done-divider{
+    padding:20px 20px 10px;
+    font-family:var(--font-mono);
+    font-size:11px;
+    letter-spacing:0.08em;
+    text-transform:uppercase;
+    color:var(--text-faint);
+    display:flex; align-items:center; gap:8px;
+  }
+  .done-divider::after{
+    content:'';
+    flex:1;
+    height:1px;
+    background:var(--border);
+  }
+
+  /* ---------- Bottom nav ---------- */
+  .bottomnav{
+    position:absolute;
+    left:0; right:0; bottom:0;
+    display:flex;
+    background:rgba(21,23,29,0.92);
+    backdrop-filter:blur(16px);
+    border-top:1px solid var(--border);
+    padding:10px 10px calc(10px + env(safe-area-inset-bottom));
+    z-index:10;
+  }
+  .nav-btn{
+    flex:1;
+    display:flex; flex-direction:column; align-items:center; gap:4px;
+    background:none; border:none; color:var(--text-faint);
+    font-family:var(--font-body);
+    font-size:11px;
+    padding:6px 0;
+    transition:color 0.15s ease;
+  }
+  .nav-btn.active{ color:var(--text); }
+  .nav-btn svg{ width:22px; height:22px; transition:stroke 0.15s ease; }
+  .nav-btn.active svg{ stroke:var(--accent); }
+
+  /* ---------- Modals ---------- */
+  .modal-backdrop{
+    position:fixed; inset:0;
+    background:rgba(0,0,0,0.6);
+    display:none;
+    align-items:flex-end;
+    z-index:100;
+  }
+  .modal-backdrop.active{ display:flex; }
+  .modal{
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:22px 22px 0 0;
+    width:100%;
+    max-width:480px;
+    margin:0 auto;
+    padding:22px 20px calc(24px + env(safe-area-inset-bottom));
+    max-height:85vh;
+    overflow-y:auto;
+    animation:slideUp 0.22s cubic-bezier(.16,1,.3,1);
+  }
+  @keyframes slideUp{ from{ transform:translateY(24px); opacity:0; } to{ transform:translateY(0); opacity:1; } }
+  .modal-title{
+    font-family:var(--font-display);
+    font-size:19px;
+    font-weight:700;
+    margin-bottom:18px;
+  }
+  .field-label{
+    font-family:var(--font-mono);
+    font-size:11px;
+    text-transform:uppercase;
+    letter-spacing:0.06em;
+    color:var(--text-faint);
+    margin-bottom:8px;
+    display:block;
+  }
+  .field{ margin-bottom:18px; }
+  input[type=text], input[type=time]{
+    width:100%;
+    background:var(--panel-raised);
+    border:1px solid var(--border);
+    color:var(--text);
+    font-family:var(--font-body);
+    font-size:15px;
+    padding:13px 14px;
+    border-radius:12px;
+    outline:none;
+  }
+  input[type=text]:focus, input[type=time]:focus{ border-color:var(--accent); }
+  .color-row{ display:flex; gap:10px; flex-wrap:wrap; }
+  .swatch{
+    width:34px; height:34px;
+    border-radius:50%;
+    border:2px solid transparent;
+    cursor:pointer;
+    transition:transform 0.12s ease;
+  }
+  .swatch.selected{ border-color:var(--text); transform:scale(1.1); }
+  .repeat-row{ display:flex; gap:8px; }
+  .repeat-opt{
+    flex:1;
+    padding:10px;
+    text-align:center;
+    background:var(--panel-raised);
+    border:1px solid var(--border);
+    border-radius:10px;
+    font-size:13px;
+    color:var(--text-dim);
+    cursor:pointer;
+    transition:background 0.12s ease, border-color 0.12s ease;
+  }
+  .repeat-opt.selected{ background:var(--accent-dim); border-color:var(--accent); color:var(--text); }
+  .modal-actions{ display:flex; gap:10px; margin-top:6px; }
+  .btn{
+    flex:1;
+    padding:14px;
+    border-radius:12px;
+    border:none;
+    font-family:var(--font-body);
+    font-size:15px;
+    font-weight:600;
+    cursor:pointer;
+    transition:transform 0.1s ease;
+  }
+  .btn:active{ transform:scale(0.97); }
+  .btn-primary{ background:var(--accent); color:#fff; }
+  .btn-ghost{ background:var(--panel-raised); color:var(--text-dim); border:1px solid var(--border); }
+  .btn-delete{ background:transparent; color:var(--danger); text-decoration:underline; font-weight:500; margin-top:14px; width:100%; text-align:center; font-size:13px; }
+
+  /* ---------- Calendar picker modal ---------- */
+  .picker-month-nav{
+    display:flex; align-items:center; justify-content:space-between;
+    margin-bottom:16px;
+  }
+  .picker-cancel{
+    display:block;
+    text-align:center;
+    padding:14px;
+    color:var(--text-dim);
+    font-size:14px;
+    margin-top:10px;
+  }
+
+  /* ---------- Context menu ---------- */
+  .ctx-menu{
+    position:fixed;
+    background:var(--panel-raised);
+    border:1px solid var(--border);
+    border-radius:12px;
+    overflow:hidden;
+    z-index:200;
+    box-shadow:0 12px 30px -8px rgba(0,0,0,0.5);
+    display:none;
+    min-width:140px;
+  }
+  .ctx-menu.active{ display:block; }
+  .ctx-item{
+    padding:12px 16px;
+    font-size:14px;
+    color:var(--text);
+    cursor:pointer;
+  }
+  .ctx-item:active{ background:var(--border); }
+  .ctx-item.danger{ color:var(--danger); }
+  .ctx-divider{ height:1px; background:var(--border); }
+  .ctx-backdrop{
+    position:fixed; inset:0; z-index:199; display:none;
+  }
+  .ctx-backdrop.active{ display:block; }
+
+  ::-webkit-scrollbar{ display:none; }
+
+  /* ---------- Celebration ---------- */
+  .celebrate-overlay{
+    position:fixed; inset:0; z-index:300;
+    display:flex; align-items:center; justify-content:center;
+    pointer-events:none;
+  }
+  .celebrate-msg{
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:18px;
+    padding:20px 28px;
+    font-family:var(--font-display);
+    font-size:18px;
+    font-weight:700;
+    color:var(--text);
+    opacity:0;
+    transform:scale(0.85) translateY(8px);
+    animation:celebratePop 2.4s ease forwards;
+    box-shadow:0 20px 50px -12px rgba(0,0,0,0.6);
+  }
+  @keyframes celebratePop{
+    0%{ opacity:0; transform:scale(0.85) translateY(8px); }
+    15%{ opacity:1; transform:scale(1) translateY(0); }
+    80%{ opacity:1; transform:scale(1) translateY(0); }
+    100%{ opacity:0; transform:scale(0.95) translateY(-6px); }
+  }
+  .confetti-piece{
+    position:fixed;
+    top:-20px;
+    width:8px; height:14px;
+    z-index:299;
+    pointer-events:none;
+    animation-name:confettiFall;
+    animation-timing-function:cubic-bezier(.25,.46,.45,.94);
+    animation-fill-mode:forwards;
+  }
+  @keyframes confettiFall{
+    0%{ transform:translateY(0) rotate(0deg); opacity:1; }
+    100%{ transform:translateY(110vh) rotate(540deg); opacity:0.9; }
+  }
+</style>
+</head>
+<body>
+
+<div id="app">
+
+  <div class="topbar" style="display:none">
+    <div class="greeting" id="greetingLabel">TODAY</div>
+    <div class="name" id="nameDisplay">—</div>
+  </div>
+
+  <!-- SCREEN 1: TODAY -->
+  <div class="screen active" id="screen-today">
+    <div class="strip-header">
+      <button class="strip-nav-btn" id="stripPrev">‹</button>
+      <button class="strip-label-btn" id="stripCalendarBtn">
+        <span id="stripMonthLabel">July 2026</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="1.8"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M8 3v4M16 3v4M3 10h18"/></svg>
+      </button>
+      <button class="strip-nav-btn" id="stripNext">›</button>
+    </div>
+    <div class="week-strip" id="weekStrip"></div>
+
+    <div class="score-card" id="scoreCard">
+      <div class="score-ring-wrap">
+        <svg viewBox="0 0 58 58">
+          <circle class="score-ring-bg" cx="29" cy="29" r="24"></circle>
+          <circle class="score-ring-fill" id="scoreRingFill" cx="29" cy="29" r="24" stroke-dasharray="0 151"></circle>
+        </svg>
+        <div class="score-ring-pct" id="scoreRingPct">0%</div>
+      </div>
+      <div class="score-mid">
+        <div class="score-title">Daily Score</div>
+        <div class="score-sub" id="scoreSub">Ready to begin</div>
+      </div>
+      <div class="score-frac" id="scoreFrac">0<span>/0</span></div>
+    </div>
+
+    <div class="section-label" id="habitListLabel">Habits</div>
+    <div class="list" id="habitList"></div>
+  </div>
+
+  <!-- SCREEN 2: PROGRESS (list) -->
+  <div class="screen" id="screen-progress">
+    <div style="height:4px"></div>
+    <div id="progressList"></div>
+  </div>
+
+  <!-- SCREEN 2b: PROGRESS (detail, monthly) -->
+  <div class="screen" id="screen-detail">
+    <div class="detail-header">
+      <button class="back-btn" id="detailBack">←</button>
+      <div class="detail-title" id="detailTitle"><span></span></div>
+    </div>
+    <div class="stat-row">
+      <div class="stat-box"><div class="stat-num" id="detailStreak">0</div><div class="stat-cap">Current streak</div></div>
+      <div class="stat-box"><div class="stat-num" id="detailBest">0</div><div class="stat-cap">Best streak</div></div>
+      <div class="stat-box"><div class="stat-num" id="detailTotal">0</div><div class="stat-cap">Total days</div></div>
+    </div>
+    <div class="month-nav">
+      <button class="month-nav-btn" id="monthPrev">‹</button>
+      <div class="month-nav-label" id="monthLabel">July 2026</div>
+      <button class="month-nav-btn" id="monthNext">›</button>
+    </div>
+    <div class="month-grid-wrap">
+      <div class="dow-row">
+        <div class="dow-cell">S</div><div class="dow-cell">M</div><div class="dow-cell">T</div><div class="dow-cell">W</div><div class="dow-cell">T</div><div class="dow-cell">F</div><div class="dow-cell">S</div>
+      </div>
+      <div class="month-grid" id="monthGrid"></div>
+    </div>
+  </div>
+
+  <!-- SCREEN 3: REMINDERS -->
+  <div class="screen" id="screen-reminders">
+    <div class="section-label" style="margin-top:4px;">Pending</div>
+    <div class="list" id="reminderPendingList"></div>
+    <div id="reminderDoneWrap"></div>
+  </div>
+
+  <button class="fab" id="fabBtn">+</button>
+
+  <div class="bottomnav">
+    <button class="nav-btn active" data-screen="today">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M8 3v4M16 3v4M3 10h18"/></svg>
+      Today
+    </button>
+    <button class="nav-btn" data-screen="progress">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="12" width="4" height="9" rx="1"/><rect x="10" y="7" width="4" height="14" rx="1"/><rect x="17" y="3" width="4" height="18" rx="1"/></svg>
+      Progress
+    </button>
+    <button class="nav-btn" data-screen="reminders">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2z"/><path d="M18 16v-5a6 6 0 1 0-12 0v5l-2 2h16l-2-2z"/></svg>
+      Reminders
+    </button>
+  </div>
+
+</div>
+
+<!-- CONTEXT MENU -->
+<div class="ctx-backdrop" id="ctxBackdrop"></div>
+<div class="ctx-menu" id="ctxMenu">
+  <div class="ctx-item" id="ctxEdit">Edit</div>
+  <div class="ctx-divider"></div>
+  <div class="ctx-item danger" id="ctxDelete">Delete</div>
+</div>
+
+<!-- MODAL: Date picker (calendar) -->
+<div class="modal-backdrop" id="pickerModalBackdrop">
+  <div class="modal">
+    <div class="modal-title">Jump to a date</div>
+    <div class="picker-month-nav">
+      <button class="month-nav-btn" id="pickerPrev">‹</button>
+      <div class="month-nav-label" id="pickerLabel">July 2026</div>
+      <button class="month-nav-btn" id="pickerNext">›</button>
+    </div>
+    <div class="dow-row">
+      <div class="dow-cell">S</div><div class="dow-cell">M</div><div class="dow-cell">T</div><div class="dow-cell">W</div><div class="dow-cell">T</div><div class="dow-cell">F</div><div class="dow-cell">S</div>
+    </div>
+    <div class="month-grid" id="pickerGrid" style="margin-bottom:8px;"></div>
+    <div class="picker-cancel" id="pickerCancel">Cancel</div>
+  </div>
+</div>
+
+<!-- MODAL: Add/Edit Habit -->
+<div class="modal-backdrop" id="habitModalBackdrop">
+  <div class="modal">
+    <div class="modal-title" id="habitModalTitle">New habit</div>
+    <div class="field">
+      <label class="field-label">Name</label>
+      <input type="text" id="habitNameInput" placeholder="e.g. Workout" maxlength="40">
+    </div>
+    <div class="field">
+      <label class="field-label">Color</label>
+      <div class="color-row" id="habitColorRow"></div>
+    </div>
+    <div class="field">
+      <label class="field-label">Reminder time (optional)</label>
+      <input type="time" id="habitTimeInput">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="habitCancelBtn">Cancel</button>
+      <button class="btn btn-primary" id="habitSaveBtn">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Add/Edit Reminder -->
+<div class="modal-backdrop" id="reminderModalBackdrop">
+  <div class="modal">
+    <div class="modal-title" id="reminderModalTitle">New reminder</div>
+    <div class="field">
+      <label class="field-label">What is it?</label>
+      <input type="text" id="reminderTextInput" placeholder="e.g. Send Dineflow invoice" maxlength="60">
+    </div>
+    <div class="field">
+      <label class="field-label">Time</label>
+      <input type="time" id="reminderTimeInput">
+    </div>
+    <div class="field">
+      <label class="field-label">Repeat</label>
+      <div class="repeat-row" id="reminderRepeatRow">
+        <div class="repeat-opt" data-val="once">One-time</div>
+        <div class="repeat-opt" data-val="daily">Daily</div>
+        <div class="repeat-opt" data-val="weekly">Weekly</div>
+      </div>
+    </div>
+    <div class="field">
+      <label class="field-label">Tag color</label>
+      <div class="color-row" id="reminderColorRow"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="reminderCancelBtn">Cancel</button>
+      <button class="btn btn-primary" id="reminderSaveBtn">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Name entry (first run) -->
+<div class="modal-backdrop" id="nameModalBackdrop">
+  <div class="modal">
+    <div class="modal-title">What should we call you?</div>
+    <div class="field">
+      <input type="text" id="nameInput" placeholder="Your name" maxlength="24">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-primary" id="nameSaveBtn" style="flex:1">Continue</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Confirm delete -->
+<div class="modal-backdrop" id="confirmModalBackdrop">
+  <div class="modal">
+    <div class="modal-title" id="confirmModalTitle">Delete this?</div>
+    <p style="color:var(--text-dim); font-size:14px; margin-bottom:20px;" id="confirmModalBody"></p>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="confirmCancelBtn">Cancel</button>
+      <button class="btn btn-primary" id="confirmOkBtn" style="background:var(--danger)">Delete</button>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+  import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyDrEN8ky9SKTgCLc05hLIcllwVsLFeYW6s",
+    authDomain: "habit-tracker-c996a.firebaseapp.com",
+    projectId: "habit-tracker-c996a",
+    storageBucket: "habit-tracker-c996a.firebasestorage.app",
+    messagingSenderId: "42670113378",
+    appId: "1:42670113378:web:3c37c8e8c24cc0d142473b"
+  };
+  const fbApp = initializeApp(firebaseConfig);
+  const db = getFirestore(fbApp);
+  const NAMESPACE = "45a2b09abfc44039b3c579db5b003fcc";
+  function dataDoc(key){ return doc(db, 'households', NAMESPACE, 'data', key); }
+
+(function(){
+
+  const PALETTE = ['#34D399','#38BDF8','#A78BFA','#FB7185','#FB923C','#FBBF24','#22D3EE','#A3E635'];
+  const DOW = ['SUN','MON','TUE','WED','THU','FRI','SAT'];
+  const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const CHECK_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+  const RING_CIRCUMFERENCE = 2 * Math.PI * 24;
+
+  let state = { name: '', habits: [], logs: {}, reminders: [] };
+
+  let selectedDate = fmtDate(new Date());
+  let currentDetailHabit = null;
+  let detailMonthCursor = new Date();
+  let pickerMonthCursor = new Date();
+  let ctxTarget = null; // {type:'habit'|'reminder', id}
+
+  function fmtDate(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+  function uid(){ return Math.random().toString(36).slice(2,10); }
+  function escapeHtml(s){ const div=document.createElement('div'); div.textContent=s; return div.innerHTML; }
+
+  // ---------- CONFIRM MODAL ----------
+  function askConfirm(message){
+    return new Promise((resolve)=>{
+      document.getElementById('confirmModalBody').textContent = message;
+      document.getElementById('confirmModalBackdrop').classList.add('active');
+      const okBtn = document.getElementById('confirmOkBtn');
+      const cancelBtn = document.getElementById('confirmCancelBtn');
+      function cleanup(result){
+        document.getElementById('confirmModalBackdrop').classList.remove('active');
+        okBtn.removeEventListener('click', onOk);
+        cancelBtn.removeEventListener('click', onCancel);
+        resolve(result);
+      }
+      function onOk(){ cleanup(true); }
+      function onCancel(){ cleanup(false); }
+      okBtn.addEventListener('click', onOk);
+      cancelBtn.addEventListener('click', onCancel);
+    });
+  }
+
+  // ---------- STORAGE (Firebase Firestore) ----------
+  async function loadState(){
+    try{
+      const [profileSnap, habitsSnap, remindersSnap] = await Promise.allSettled([
+        getDoc(dataDoc('profile')),
+        getDoc(dataDoc('habits-data')),
+        getDoc(dataDoc('reminders-data'))
+      ]);
+      if(profileSnap.status==='fulfilled' && profileSnap.value.exists()) state.name = profileSnap.value.data().name || '';
+      if(habitsSnap.status==='fulfilled' && habitsSnap.value.exists()){
+        const d = habitsSnap.value.data();
+        state.habits = d.habits || []; state.logs = d.logs || {};
+      }
+      if(remindersSnap.status==='fulfilled' && remindersSnap.value.exists()){
+        state.reminders = remindersSnap.value.data().reminders || [];
+      }
+    }catch(e){ console.error('load error', e); }
+  }
+  async function saveProfile(){ try{ await setDoc(dataDoc('profile'), {name: state.name}); }catch(e){ console.error('save profile failed', e); } }
+  async function saveHabits(){ try{ await setDoc(dataDoc('habits-data'), {habits: state.habits, logs: state.logs}); }catch(e){ console.error('save habits failed', e); } }
+  async function saveReminders(){ try{ await setDoc(dataDoc('reminders-data'), {reminders: state.reminders}); }catch(e){ console.error('save reminders failed', e); } }
+
+  // ---------- NAV ----------
+  document.querySelectorAll('.nav-btn').forEach(btn=> btn.addEventListener('click', ()=> showScreen(btn.dataset.screen)));
+  function showScreen(name){
+    document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+    document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+    if(name==='detail'){
+      document.getElementById('screen-detail').classList.add('active');
+      document.getElementById('fabBtn').style.display='none';
+      return;
+    }
+    document.getElementById('screen-'+name).classList.add('active');
+    const navBtn = document.querySelector('.nav-btn[data-screen="'+name+'"]');
+    if(navBtn) navBtn.classList.add('active');
+    document.getElementById('fabBtn').style.display='flex';
+    document.getElementById('greetingLabel').textContent = name==='today' ? 'TODAY' : (name==='progress' ? 'PROGRESS' : 'REMINDERS');
+  }
+
+  // ---------- DAILY SCORE ----------
+  function renderScore(){
+    const total = state.habits.length;
+    let done = 0;
+    state.habits.forEach(h=>{ if(state.logs[h.id] && state.logs[h.id][selectedDate]) done++; });
+    document.getElementById('scoreFrac').innerHTML = done+'<span>/'+total+'</span>';
+    const pct = total===0 ? 0 : Math.round((done/total)*100);
+    document.getElementById('scoreRingPct').textContent = pct+'%';
+    const fillLen = (pct/100) * RING_CIRCUMFERENCE;
+    document.getElementById('scoreRingFill').setAttribute('stroke-dasharray', fillLen+' '+RING_CIRCUMFERENCE);
+    let sub = 'Ready to begin';
+    if(total===0) sub = 'Add a habit to start';
+    else if(done===0) sub = 'Ready to begin';
+    else if(done===total) sub = 'All done — nice work';
+    else sub = 'Keep going';
+    document.getElementById('scoreSub').textContent = sub;
+  }
+
+  // ---------- TODAY: week strip ----------
+  let stripMonthCursor = new Date();
+  function renderWeekStrip(){
+    document.getElementById('stripMonthLabel').textContent = MONTHS[stripMonthCursor.getMonth()]+' '+stripMonthCursor.getFullYear();
+    const y = stripMonthCursor.getFullYear(), mo = stripMonthCursor.getMonth();
+    const daysInMonth = new Date(y, mo+1, 0).getDate();
+    const count = Math.min(7, daysInMonth);
+    const wrap = document.getElementById('weekStrip');
+    wrap.innerHTML = '';
+    for(let day=1; day<=count; day++){
+      const key = y+'-'+String(mo+1).padStart(2,'0')+'-'+String(day).padStart(2,'0');
+      const d = new Date(y, mo, day);
+      const el = document.createElement('div');
+      el.className = 'week-day' + (key===selectedDate ? ' selected' : '');
+      el.innerHTML = `<span class="wd-label">${DOW[d.getDay()].slice(0,2).charAt(0)+DOW[d.getDay()].slice(1,2).toLowerCase()}</span><span class="wd-num">${day}</span>`;
+      el.addEventListener('click', ()=>{
+        selectedDate = key;
+        renderWeekStrip(); renderHabitList(); renderScore();
+      });
+      wrap.appendChild(el);
+    }
+  }
+  document.getElementById('stripPrev').addEventListener('click', ()=>{ stripMonthCursor.setMonth(stripMonthCursor.getMonth()-1); renderWeekStrip(); });
+  document.getElementById('stripNext').addEventListener('click', ()=>{ stripMonthCursor.setMonth(stripMonthCursor.getMonth()+1); renderWeekStrip(); });
+  document.getElementById('stripCalendarBtn').addEventListener('click', ()=>{
+    pickerMonthCursor = new Date(selectedDate+'T00:00:00');
+    renderPicker();
+    document.getElementById('pickerModalBackdrop').classList.add('active');
+  });
+
+  // ---------- Generic month grid builder ----------
+  function buildMonthCells(cursorDate, opts){
+    const y = cursorDate.getFullYear(), mo = cursorDate.getMonth();
+    const daysInMonth = new Date(y, mo+1, 0).getDate();
+    const firstDow = new Date(y, mo, 1).getDay();
+    const today = fmtDate(new Date());
+    let html = '';
+    for(let i=0;i<firstDow;i++) html += '<div class="day-box empty"></div>';
+    for(let day=1; day<=daysInMonth; day++){
+      const key = y+'-'+String(mo+1).padStart(2,'0')+'-'+String(day).padStart(2,'0');
+      const filled = opts.getFilled ? opts.getFilled(key) : false;
+      const color = filled && opts.getColor ? opts.getColor(key) : null;
+      const isToday = key===today;
+      const isFuture = key > today;
+      let cls = 'day-box';
+      if(filled) cls += ' filled';
+      if(isToday && opts.markToday) cls += ' today-mark';
+      if(isFuture && opts.disableFuture) cls += ' future';
+      html += `<div class="${cls}" data-key="${key}" style="${filled?'background:'+color:''}">${opts.showNum?day:''}</div>`;
+    }
+    return html;
+  }
+
+  // ---------- PICKER MODAL ----------
+  function renderPicker(){
+    document.getElementById('pickerLabel').textContent = MONTHS[pickerMonthCursor.getMonth()]+' '+pickerMonthCursor.getFullYear();
+    const grid = document.getElementById('pickerGrid');
+    grid.innerHTML = buildMonthCells(pickerMonthCursor, {
+      getFilled:(k)=> k===selectedDate,
+      getColor:()=> 'var(--accent)',
+      showNum:true,
+      disableFuture:true,
+      markToday:true
+    });
+    grid.querySelectorAll('.day-box[data-key]').forEach(el=>{
+      el.addEventListener('click', ()=>{
+        const key = el.dataset.key;
+        if(key > fmtDate(new Date())) return;
+        selectedDate = key;
+        document.getElementById('pickerModalBackdrop').classList.remove('active');
+        stripMonthCursor = new Date(selectedDate+'T00:00:00');
+        renderWeekStrip(); renderHabitList(); renderScore();
+      });
+    });
+  }
+  document.getElementById('pickerPrev').addEventListener('click', ()=>{ pickerMonthCursor.setMonth(pickerMonthCursor.getMonth()-1); renderPicker(); });
+  document.getElementById('pickerNext').addEventListener('click', ()=>{
+    const next = new Date(pickerMonthCursor); next.setMonth(next.getMonth()+1);
+    if(next > new Date()) return;
+    pickerMonthCursor = next; renderPicker();
+  });
+  document.getElementById('pickerCancel').addEventListener('click', ()=> document.getElementById('pickerModalBackdrop').classList.remove('active'));
+  document.getElementById('pickerModalBackdrop').addEventListener('click', (e)=>{ if(e.target.id==='pickerModalBackdrop') e.currentTarget.classList.remove('active'); });
+
+  // ---------- TODAY: habit list ----------
+  function renderHabitList(){
+    const list = document.getElementById('habitList');
+    const label = document.getElementById('habitListLabel');
+    label.textContent = 'Habits';
+
+    list.innerHTML = '';
+    if(state.habits.length===0){
+      list.innerHTML = `<div class="empty-state">No habits yet.<br>Tap + to add your first one.</div>`;
+      return;
+    }
+    state.habits.forEach(h=>{
+      const done = !!(state.logs[h.id] && state.logs[h.id][selectedDate]);
+      const card = document.createElement('div');
+      card.className = 'habit-card';
+      card.innerHTML = `
+        <div class="check-circle ${done?'checked':''}" style="${done?'background:'+h.color+';border-color:'+h.color:''}" data-habit="${h.id}">${CHECK_SVG}</div>
+        <div class="habit-card-body" data-habit-edit="${h.id}">
+          <span class="habit-name ${done?'done':''}">${escapeHtml(h.name)}</span>
+          ${h.time ? `<span class="habit-time">${h.time}</span>` : ''}
+        </div>
+        <button class="trash-btn" data-habit-delete="${h.id}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7h16M9 7V4h6v3M6 7l1 13a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-13"/></svg></button>
+      `;
+      card.querySelector('.check-circle').addEventListener('click', ()=> toggleHabit(h.id));
+      card.querySelector('.habit-card-body').addEventListener('click', ()=> openHabitModal(h));
+      card.querySelector('.trash-btn').addEventListener('click', async ()=>{
+        const ok = await askConfirm('Delete "'+h.name+'"? This removes its whole history too.');
+        if(!ok) return;
+        state.habits = state.habits.filter(x=>x.id!==h.id);
+        delete state.logs[h.id];
+        await saveHabits();
+        renderHabitList(); renderProgressList(); renderScore();
+      });
+      list.appendChild(card);
+    });
+  }
+  // ---------- CELEBRATION ----------
+  function celebrate(){
+    const overlay = document.createElement('div');
+    overlay.className = 'celebrate-overlay';
+    const msg = document.createElement('div');
+    msg.className = 'celebrate-msg';
+    msg.textContent = 'All done! 🎉';
+    overlay.appendChild(msg);
+    document.body.appendChild(overlay);
+    setTimeout(()=> overlay.remove(), 2500);
+
+    const colors = PALETTE;
+    const count = 60;
+    for(let i=0;i<count;i++){
+      const piece = document.createElement('div');
+      piece.className = 'confetti-piece';
+      const color = colors[Math.floor(Math.random()*colors.length)];
+      piece.style.background = color;
+      piece.style.left = Math.random()*100+'vw';
+      piece.style.borderRadius = Math.random()>0.5 ? '50%' : '2px';
+      const duration = 2 + Math.random()*1.5;
+      const delay = Math.random()*0.4;
+      piece.style.animationDuration = duration+'s';
+      piece.style.animationDelay = delay+'s';
+      document.body.appendChild(piece);
+      setTimeout(()=> piece.remove(), (duration+delay)*1000 + 200);
+    }
+  }
+
+  async function toggleHabit(id){
+    const total = state.habits.length;
+    const wasComplete = total>0 && state.habits.every(h=> state.logs[h.id] && state.logs[h.id][selectedDate]);
+    if(!state.logs[id]) state.logs[id] = {};
+    if(state.logs[id][selectedDate]) delete state.logs[id][selectedDate];
+    else state.logs[id][selectedDate] = true;
+    const nowComplete = total>0 && state.habits.every(h=> state.logs[h.id] && state.logs[h.id][selectedDate]);
+    renderHabitList();
+    renderProgressList();
+    renderScore();
+    await saveHabits();
+    if(nowComplete && !wasComplete) celebrate();
+  }
+
+  // ---------- PROGRESS screen ----------
+  function last7Dates(){
+    const arr = []; const today = new Date();
+    for(let i=6;i>=0;i--){ const d=new Date(today); d.setDate(d.getDate()-i); arr.push(fmtDate(d)); }
+    return arr;
+  }
+  function renderProgressList(){
+    const wrap = document.getElementById('progressList');
+    wrap.innerHTML = '';
+    if(state.habits.length===0){
+      wrap.innerHTML = `<div class="empty-state">Nothing to show yet.<br>Add a habit from the Today tab.</div>`;
+      return;
+    }
+    const days = last7Dates();
+    state.habits.forEach(h=>{
+      const streak = currentStreak(h.id);
+      const card = document.createElement('div');
+      card.className = 'habit-progress-card';
+      card.innerHTML = `
+        <div class="hp-head">
+          <span class="habit-name">${escapeHtml(h.name)}</span>
+          <span class="hp-streak">${streak} day${streak===1?'':'s'} 🔥</span>
+        </div>
+        <div class="hp-grid">
+          ${days.map(dk=>{
+            const filled = !!(state.logs[h.id] && state.logs[h.id][dk]);
+            return `<div class="box ${filled?'filled':''}" style="${filled?'background:'+h.color:''}"></div>`;
+          }).join('')}
+        </div>
+      `;
+      card.addEventListener('click', ()=> openDetail(h));
+      wrap.appendChild(card);
+    });
+  }
+  function currentStreak(habitId){
+    let streak = 0; let d = new Date();
+    while(true){
+      const key = fmtDate(d);
+      if(state.logs[habitId] && state.logs[habitId][key]){ streak++; d.setDate(d.getDate()-1); } else break;
+    }
+    return streak;
+  }
+  function bestStreak(habitId){
+    const log = state.logs[habitId] || {};
+    const dates = Object.keys(log).filter(k=>log[k]).sort();
+    if(dates.length===0) return 0;
+    let best=1, cur=1;
+    for(let i=1;i<dates.length;i++){
+      const prev = new Date(dates[i-1]+'T00:00:00');
+      const curD = new Date(dates[i]+'T00:00:00');
+      const diff = (curD-prev)/86400000;
+      if(diff===1){ cur++; best=Math.max(best,cur); } else cur=1;
+    }
+    return Math.max(best,cur);
+  }
+
+  function openDetail(h){
+    currentDetailHabit = h;
+    detailMonthCursor = new Date();
+    document.getElementById('detailTitle').innerHTML = `<span style="width:10px;height:10px;border-radius:50%;background:${h.color};display:inline-block;"></span> ${escapeHtml(h.name)}`;
+    document.getElementById('detailStreak').textContent = currentStreak(h.id);
+    document.getElementById('detailBest').textContent = bestStreak(h.id);
+    const log = state.logs[h.id] || {};
+    document.getElementById('detailTotal').textContent = Object.values(log).filter(Boolean).length;
+    renderDetailMonth();
+    showScreen('detail');
+  }
+  document.getElementById('detailBack').addEventListener('click', ()=> showScreen('progress'));
+
+  function renderDetailMonth(){
+    if(!currentDetailHabit) return;
+    document.getElementById('monthLabel').textContent = MONTHS[detailMonthCursor.getMonth()]+' '+detailMonthCursor.getFullYear();
+    const log = state.logs[currentDetailHabit.id] || {};
+    const grid = document.getElementById('monthGrid');
+    grid.innerHTML = buildMonthCells(detailMonthCursor, {
+      getFilled:(k)=> !!log[k],
+      getColor:()=> currentDetailHabit.color,
+      showNum:true,
+      markToday:true,
+      disableFuture:true
+    });
+  }
+  document.getElementById('monthPrev').addEventListener('click', ()=>{ detailMonthCursor.setMonth(detailMonthCursor.getMonth()-1); renderDetailMonth(); });
+  document.getElementById('monthNext').addEventListener('click', ()=>{
+    const next = new Date(detailMonthCursor); next.setMonth(next.getMonth()+1);
+    if(next > new Date()) return;
+    detailMonthCursor = next; renderDetailMonth();
+  });
+
+  // ---------- REMINDERS screen ----------
+  function renderReminders(){
+    const pendingWrap = document.getElementById('reminderPendingList');
+    const doneWrapOuter = document.getElementById('reminderDoneWrap');
+    pendingWrap.innerHTML = ''; doneWrapOuter.innerHTML = '';
+    const pending = state.reminders.filter(r=>!r.done);
+    const done = state.reminders.filter(r=>r.done);
+    if(pending.length===0 && done.length===0){
+      pendingWrap.innerHTML = `<div class="empty-state">No reminders yet.<br>Tap + to add one.</div>`;
+    } else if(pending.length===0){
+      pendingWrap.innerHTML = `<div class="empty-state">All clear. Nothing pending.</div>`;
+    } else {
+      pending.sort((a,b)=> (a.time||'99:99').localeCompare(b.time||'99:99'));
+      pending.forEach(r=> pendingWrap.appendChild(reminderCard(r)));
+    }
+    if(done.length>0){
+      const divider = document.createElement('div');
+      divider.className = 'done-divider'; divider.textContent = 'Done';
+      doneWrapOuter.appendChild(divider);
+      const doneList = document.createElement('div'); doneList.className = 'list';
+      done.forEach(r=> doneList.appendChild(reminderCard(r)));
+      doneWrapOuter.appendChild(doneList);
+    }
+  }
+  function reminderCard(r){
+    const card = document.createElement('div');
+    card.className = 'reminder-card';
+    const repeatLabel = r.repeat==='daily' ? 'Daily' : r.repeat==='weekly' ? 'Weekly' : 'One-time';
+    card.innerHTML = `
+      <div class="reminder-tag-check ${r.done?'checked':''}" style="${r.done?'background:'+r.color+';border-color:'+r.color:''}" data-reminder="${r.id}">${CHECK_SVG}</div>
+      <div class="reminder-body">
+        <div class="reminder-text ${r.done?'done':''}">${escapeHtml(r.text)}</div>
+        <div class="reminder-meta">${r.time ? r.time+' · ' : ''}${repeatLabel}</div>
+      </div>
+      <button class="dots-btn" data-reminder-menu="${r.id}">⋯</button>
+    `;
+    card.querySelector('.reminder-tag-check').addEventListener('click', ()=> toggleReminder(r.id));
+    card.querySelector('.dots-btn').addEventListener('click', (e)=> openCtxMenu(e, 'reminder', r.id));
+    return card;
+  }
+  async function toggleReminder(id){
+    const r = state.reminders.find(x=>x.id===id);
+    if(!r) return;
+    r.done = !r.done; r.doneAt = r.done ? Date.now() : null;
+    renderReminders();
+    await saveReminders();
+  }
+
+  // ---------- CONTEXT MENU ----------
+  function openCtxMenu(e, type, id){
+    e.stopPropagation();
+    ctxTarget = {type, id};
+    const menu = document.getElementById('ctxMenu');
+    const rect = e.target.getBoundingClientRect();
+    menu.style.top = (rect.bottom + 6) + 'px';
+    menu.style.left = Math.max(12, rect.right - 150) + 'px';
+    menu.classList.add('active');
+    document.getElementById('ctxBackdrop').classList.add('active');
+  }
+  function closeCtxMenu(){
+    document.getElementById('ctxMenu').classList.remove('active');
+    document.getElementById('ctxBackdrop').classList.remove('active');
+  }
+  document.getElementById('ctxBackdrop').addEventListener('click', closeCtxMenu);
+  document.getElementById('ctxEdit').addEventListener('click', ()=>{
+    if(!ctxTarget) return;
+    closeCtxMenu();
+    if(ctxTarget.type==='habit') openHabitModal(state.habits.find(h=>h.id===ctxTarget.id));
+    else openReminderModal(state.reminders.find(r=>r.id===ctxTarget.id));
+  });
+  document.getElementById('ctxDelete').addEventListener('click', async ()=>{
+    if(!ctxTarget) return;
+    if(ctxTarget.type==='habit'){
+      state.habits = state.habits.filter(h=>h.id!==ctxTarget.id);
+      delete state.logs[ctxTarget.id];
+      await saveHabits();
+      renderHabitList(); renderProgressList(); renderScore();
+    } else {
+      state.reminders = state.reminders.filter(r=>r.id!==ctxTarget.id);
+      await saveReminders();
+      renderReminders();
+    }
+    closeCtxMenu();
+  });
+
+  // ---------- HABIT MODAL ----------
+  let editingHabitId = null;
+  let selectedHabitColor = PALETTE[0];
+  function buildColorRow(container, onSelect, initial){
+    container.innerHTML = '';
+    PALETTE.forEach(c=>{
+      const sw = document.createElement('div');
+      sw.className = 'swatch' + (c===initial ? ' selected' : '');
+      sw.style.background = c;
+      sw.addEventListener('click', ()=>{
+        container.querySelectorAll('.swatch').forEach(s=>s.classList.remove('selected'));
+        sw.classList.add('selected'); onSelect(c);
+      });
+      container.appendChild(sw);
+    });
+  }
+  function openHabitModal(h){
+    editingHabitId = h ? h.id : null;
+    document.getElementById('habitModalTitle').textContent = h ? 'Edit habit' : 'New habit';
+    document.getElementById('habitNameInput').value = h ? h.name : '';
+    document.getElementById('habitTimeInput').value = h ? (h.time||'') : '';
+    selectedHabitColor = h ? h.color : PALETTE[Math.floor(Math.random()*PALETTE.length)];
+    buildColorRow(document.getElementById('habitColorRow'), c=>selectedHabitColor=c, selectedHabitColor);
+    document.getElementById('habitModalBackdrop').classList.add('active');
+  }
+  function closeHabitModal(){ document.getElementById('habitModalBackdrop').classList.remove('active'); }
+  document.getElementById('habitCancelBtn').addEventListener('click', closeHabitModal);
+  document.getElementById('habitSaveBtn').addEventListener('click', async ()=>{
+    const name = document.getElementById('habitNameInput').value.trim();
+    if(!name) return;
+    const time = document.getElementById('habitTimeInput').value;
+    if(editingHabitId){
+      const h = state.habits.find(x=>x.id===editingHabitId);
+      h.name = name; h.color = selectedHabitColor; h.time = time;
+    } else {
+      state.habits.push({id:uid(), name, color:selectedHabitColor, time});
+    }
+    await saveHabits();
+    renderHabitList(); renderProgressList(); renderScore();
+    closeHabitModal();
+  });
+
+  // ---------- REMINDER MODAL ----------
+  let editingReminderId = null;
+  let selectedReminderColor = PALETTE[0];
+  let selectedRepeat = 'once';
+  function openReminderModal(r){
+    editingReminderId = r ? r.id : null;
+    document.getElementById('reminderModalTitle').textContent = r ? 'Edit reminder' : 'New reminder';
+    document.getElementById('reminderTextInput').value = r ? r.text : '';
+    document.getElementById('reminderTimeInput').value = r ? (r.time||'') : '';
+    selectedReminderColor = r ? r.color : PALETTE[Math.floor(Math.random()*PALETTE.length)];
+    selectedRepeat = r ? r.repeat : 'once';
+    buildColorRow(document.getElementById('reminderColorRow'), c=>selectedReminderColor=c, selectedReminderColor);
+    document.querySelectorAll('#reminderRepeatRow .repeat-opt').forEach(el=> el.classList.toggle('selected', el.dataset.val===selectedRepeat));
+    document.getElementById('reminderModalBackdrop').classList.add('active');
+  }
+  function closeReminderModal(){ document.getElementById('reminderModalBackdrop').classList.remove('active'); }
+  document.querySelectorAll('#reminderRepeatRow .repeat-opt').forEach(el=>{
+    el.addEventListener('click', ()=>{
+      selectedRepeat = el.dataset.val;
+      document.querySelectorAll('#reminderRepeatRow .repeat-opt').forEach(x=>x.classList.remove('selected'));
+      el.classList.add('selected');
+    });
+  });
+  document.getElementById('reminderCancelBtn').addEventListener('click', closeReminderModal);
+  document.getElementById('reminderSaveBtn').addEventListener('click', async ()=>{
+    const text = document.getElementById('reminderTextInput').value.trim();
+    if(!text) return;
+    const time = document.getElementById('reminderTimeInput').value;
+    if(editingReminderId){
+      const r = state.reminders.find(x=>x.id===editingReminderId);
+      r.text=text; r.time=time; r.repeat=selectedRepeat; r.color=selectedReminderColor;
+    } else {
+      state.reminders.push({id:uid(), text, time, repeat:selectedRepeat, color:selectedReminderColor, done:false, doneAt:null});
+    }
+    await saveReminders();
+    renderReminders();
+    closeReminderModal();
+  });
+
+  // ---------- FAB ----------
+  document.getElementById('fabBtn').addEventListener('click', ()=>{
+    const active = document.querySelector('.screen.active').id;
+    if(active==='screen-reminders') openReminderModal(null);
+    else openHabitModal(null);
+  });
+
+  // ---------- NAME MODAL ----------
+  document.getElementById('nameSaveBtn').addEventListener('click', async ()=>{
+    const val = document.getElementById('nameInput').value.trim();
+    if(!val) return;
+    state.name = val;
+    document.getElementById('nameDisplay').textContent = val;
+    document.getElementById('nameModalBackdrop').classList.remove('active');
+    await saveProfile();
+  });
+
+  // ---------- INIT ----------
+  async function init(){
+    await loadState();
+    document.getElementById('nameDisplay').textContent = state.name || '—';
+    if(!state.name) document.getElementById('nameModalBackdrop').classList.add('active');
+    renderWeekStrip();
+    renderHabitList();
+    renderProgressList();
+    renderReminders();
+    renderScore();
+  }
+  init();
+
+})();
+</script>
+</body>
+</html>
